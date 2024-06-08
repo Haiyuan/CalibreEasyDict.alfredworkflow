@@ -105,8 +105,8 @@ A workflow for Alfred that allows you to switch between specified special applic
 The list of special applications is defined in the workflow script. You can modify the `specialAppsJson` variable to include your desired applications:
 
 ```applescript
-set specialAppsJson to "{\"special_apps\": [\"calibre-parallel\", \"sublime_text\", \"sublime_merge\"]}"
-set specialApps to {"calibre-parallel", "sublime_text", "sublime_merge"}
+set specialAppsJson to "{\"special_apps\": [\"calibre-parallel\", \"sublime_text\", \"sublime_merge\", \"Electron\"]}"
+set specialApps to {"calibre-parallel", "sublime_text", "sublime_merge", "Electron"}
 ```
 
 ### Hammerspoon Alerts
