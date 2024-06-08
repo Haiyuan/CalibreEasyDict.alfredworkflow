@@ -29,6 +29,11 @@ A workflow for Alfred that allows you to switch between specified special applic
 - Python environment with Quartz installed (`pyobjc-framework-Quartz`).
 - Hammerspoon for additional hotkey bindings and alerts.
 - Virtual environment for Python at `~/myenv/bin/python`.
+- EasyDict installed via Homebrew:
+
+    ```sh
+    brew install --cask Easydict
+    ```
 
 ### Steps
 
@@ -146,8 +151,8 @@ The main AppleScript handles application switching, keypress simulation, and int
 
 ```applescript
 -- Embed special_apps.json data directly
-set specialAppsJson to "{\"special_apps\": [\"calibre-parallel\", \"sublime_text\", \"sublime_merge\"]}"
-set specialApps to {"calibre-parallel", "sublime_text", "sublime_merge"}
+set specialAppsJson to "{\"special_apps\": [\"calibre-parallel\", \"sublime_text\", \"sublime_merge\", \"Electron\"]}"
+set specialApps to {"calibre-parallel", "sublime_text", "sublime_merge", "Electron"}
 
 -- Get the name of the current application
 on getCurrentAppName()
@@ -334,4 +339,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Alfred](https://www.alfredapp.com/) - The macOS productivity application.
 - [Hammerspoon](https://www.hammerspoon.org/) - For additional hotkey bindings and alerts.
 - [Quartz](https://pypi.org/project/pyobjc-framework-Quartz/) - Used for mouse position handling in Python.
+- [EasyDict](https://github.com/tisfeng/Easydict?tab=readme-ov-file#url-scheme) - For translation services.
 - Special thanks to all contributors and resources used.
