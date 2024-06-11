@@ -29,46 +29,129 @@ This project sets up a local HTTP server that listens for requests of the form `
 
    ```python
    import http.server
-   import urllib.parse
-   import webbrowser
+import urllib.parse
+import webbrowser
+import subprocess
+import time
 
-   class RequestHandler(http.server.BaseHTTPRequestHandler):
-       def do_GET(self):
-           parsed_path = urllib.parse.urlparse(self.path)
-           query = urllib.parse.parse_qs(parsed_path.query)
-           word = query.get('text', [''])[0]
+class RequestHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed_path = urllib.parse.urlparse(self.path)
+        query = urllib.parse.parse_qs(parsed_path.query)
+        word = query.get('text', [''])[0]
 
-           # Check if the query word is present
-           if not word:
-               self.send_response(400)
-               self.send_header('Content-type', 'text/html')
-               self.end_headers()
-               self.wfile.write(b'Missing query text.')
-               return
+        # 检查是否存在查询词
+        if not word:
+            self.send_response(400)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write(b'Missing query text.')
+            return
 
-           # Encode the word
-           encoded_word = urllib.parse.quote(word)
+        # 将 word 转换为 URL 编码
+        encoded_word = urllib.parse.quote(word)
 
-           # Build easydict URL
-           easydict_url = f"easydict://query?text={encoded_word}"
+        # 获取当前光标位置
+        mouse_position_script = """
+        on getMousePosition()
+            set mousePositionScript to "~/myenv/bin/python -c 'import Quartz.CoreGraphics as CG; loc = CG.CGEventGetLocation(CG.CGEventCreate(None)); print(int(loc.x), int(loc.y))'"
+            set mousePosition to do shell script mousePositionScript
+            set AppleScript's text item delimiters to " "
+            set {mousePositionX, mousePositionY} to text items of mousePosition
+            return {mousePositionX, mousePositionY}
+        end getMousePosition
 
-           # Open easydict URL
-           webbrowser.open(easydict_url)
+        getMousePosition()
+        """
+        mouse_position = subprocess.check_output(['osascript', '-e', mouse_position_script])
+        mouse_position = mouse_position.decode('utf-8').strip().split(' ')
+        mouse_x, mouse_y = mouse_position[0], mouse_position[1]
 
-           # Send response
-           self.send_response(200)
-           self.send_header('Content-type', 'text/html')
-           self.end_headers()
-           self.wfile.write(b'URL has been converted and opened.')
+        # AppleScript to simulate Cmd + Alt + Ctrl + S to record the current window
+        record_window_script = """
+        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
+            tell application "System Events"
+                if commandKey then key down command
+                if optionKey then key down option
+                if controlKey then key down control
+                key code keyCode
+                if controlKey then key up control
+                if optionKey then key up option
+                if commandKey then key up command
+            end tell
+        end performKeyPress
 
-   def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
-       server_address = ('', 8080)
-       httpd = server_class(server_address, handler_class)
-       print('Starting http server...')
-       httpd.serve_forever()
+        on switchToApp(appName, keyCode)
+            performKeyPress(true, true, true, keyCode)
+        end switchToApp
 
-   if __name__ == "__main__":
-       run()
+        switchToApp("frontApp", 1)
+        """
+        subprocess.run(["osascript", "-e", record_window_script])
+
+        # 打开 easydict URL
+        easydict_url = f"easydict://query?text={encoded_word}"
+        webbrowser.open(easydict_url)
+
+        # 等待字典窗口打开
+        time.sleep(1)
+
+        # AppleScript to simulate Cmd + Alt + Ctrl + R to switch back to the previous window
+        switch_window_script = """
+        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
+            tell application "System Events"
+                if commandKey then key down command
+                if optionKey then key down option
+                if controlKey then key down control
+                key code keyCode
+                if controlKey then key up control
+                if optionKey then key up option
+                if commandKey then key up command
+            end tell
+        end performKeyPress
+
+        on switchToApp(appName, keyCode)
+            performKeyPress(true, true, true, keyCode)
+        end switchToApp
+
+        switchToApp("frontApp", 15)
+        """
+        subprocess.run(["osascript", "-e", switch_window_script])
+
+        # 恢复光标位置
+        restore_mouse_position_script = f"""
+        on restoreMousePosition(mouseX, mouseY)
+            set pythonScript to "import sys
+        from Quartz.CoreGraphics import CGEventCreateMouseEvent, kCGEventMouseMoved, CGEventPost
+        import Quartz.CoreGraphics as CG
+
+        mousePosition = float(sys.argv[1])
+        mousePositionY = float(sys.argv[2])
+
+        ourEvent = CG.CGEventCreateMouseEvent(None, kCGEventMouseMoved, (mousePosition, mousePositionY), 0)
+        CGEventPost(0, ourEvent)"
+            set shellScript to "~/myenv/bin/python -c " & quoted form of pythonScript & " " & mouseX & " " & mouseY
+            do shell script shellScript
+        end restoreMousePosition
+
+        restoreMousePosition({mouse_x}, {mouse_y})
+        """
+        subprocess.run(['osascript', '-e', restore_mouse_position_script])
+
+        # 发送响应
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b'URL has been converted and opened.')
+
+def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
+    server_address = ('', 8080)
+    httpd = server_class(server_address, handler_class)
+    print('Starting http server...')
+    httpd.serve_forever()
+
+if __name__ == "__main__":
+    run()
    ```
 
 ### Step 2: Configure Launchd to Run the Script at Startup
