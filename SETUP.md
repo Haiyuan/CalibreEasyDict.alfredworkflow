@@ -29,129 +29,129 @@ This project sets up a local HTTP server that listens for requests of the form `
 
    ```python
    import http.server
-import urllib.parse
-import webbrowser
-import subprocess
-import time
+   import urllib.parse
+   import webbrowser
+   import subprocess
+   import time
 
-class RequestHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        parsed_path = urllib.parse.urlparse(self.path)
-        query = urllib.parse.parse_qs(parsed_path.query)
-        word = query.get('text', [''])[0]
+   class RequestHandler(http.server.BaseHTTPRequestHandler):
+       def do_GET(self):
+           parsed_path = urllib.parse.urlparse(self.path)
+           query = urllib.parse.parse_qs(parsed_path.query)
+           word = query.get('text', [''])[0]
 
-        # 检查是否存在查询词
-        if not word:
-            self.send_response(400)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(b'Missing query text.')
-            return
+           # Check if the query text is present
+           if not word:
+               self.send_response(400)
+               self.send_header('Content-type', 'text/html')
+               self.end_headers()
+               self.wfile.write(b'Missing query text.')
+               return
 
-        # 将 word 转换为 URL 编码
-        encoded_word = urllib.parse.quote(word)
+           # Encode the word
+           encoded_word = urllib.parse.quote(word)
 
-        # 获取当前光标位置
-        mouse_position_script = """
-        on getMousePosition()
-            set mousePositionScript to "~/myenv/bin/python -c 'import Quartz.CoreGraphics as CG; loc = CG.CGEventGetLocation(CG.CGEventCreate(None)); print(int(loc.x), int(loc.y))'"
-            set mousePosition to do shell script mousePositionScript
-            set AppleScript's text item delimiters to " "
-            set {mousePositionX, mousePositionY} to text items of mousePosition
-            return {mousePositionX, mousePositionY}
-        end getMousePosition
+           # Get current mouse position
+           mouse_position_script = """
+           on getMousePosition()
+               set mousePositionScript to "~/myenv/bin/python -c 'import Quartz.CoreGraphics as CG; loc = CG.CGEventGetLocation(CG.CGEventCreate(None)); print(int(loc.x), int(loc.y))'"
+               set mousePosition to do shell script mousePositionScript
+               set AppleScript's text item delimiters to " "
+               set {mousePositionX, mousePositionY} to text items of mousePosition
+               return {mousePositionX, mousePositionY}
+           end getMousePosition
 
-        getMousePosition()
-        """
-        mouse_position = subprocess.check_output(['osascript', '-e', mouse_position_script])
-        mouse_position = mouse_position.decode('utf-8').strip().split(' ')
-        mouse_x, mouse_y = mouse_position[0], mouse_position[1]
+           getMousePosition()
+           """
+           mouse_position = subprocess.check_output(['osascript', '-e', mouse_position_script])
+           mouse_position = mouse_position.decode('utf-8').strip().split(' ')
+           mouse_x, mouse_y = mouse_position[0], mouse_position[1]
 
-        # AppleScript to simulate Cmd + Alt + Ctrl + S to record the current window
-        record_window_script = """
-        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-            tell application "System Events"
-                if commandKey then key down command
-                if optionKey then key down option
-                if controlKey then key down control
-                key code keyCode
-                if controlKey then key up control
-                if optionKey then key up option
-                if commandKey then key up command
-            end tell
-        end performKeyPress
+           # AppleScript to simulate Cmd + Alt + Ctrl + S to record the current window
+           record_window_script = """
+           on performKeyPress(commandKey, optionKey, controlKey, keyCode)
+               tell application "System Events"
+                   if commandKey then key down command
+                   if optionKey then key down option
+                   if controlKey then key down control
+                   key code keyCode
+                   if controlKey then key up control
+                   if optionKey then key up option
+                   if commandKey then key up command
+               end tell
+           end performKeyPress
 
-        on switchToApp(appName, keyCode)
-            performKeyPress(true, true, true, keyCode)
-        end switchToApp
+           on switchToApp(appName, keyCode)
+               performKeyPress(true, true, true, keyCode)
+           end switchToApp
 
-        switchToApp("frontApp", 1)
-        """
-        subprocess.run(["osascript", "-e", record_window_script])
+           switchToApp("frontApp", 1)
+           """
+           subprocess.run(["osascript", "-e", record_window_script])
 
-        # 打开 easydict URL
-        easydict_url = f"easydict://query?text={encoded_word}"
-        webbrowser.open(easydict_url)
+           # Open easydict URL
+           easydict_url = f"easydict://query?text={encoded_word}"
+           webbrowser.open(easydict_url)
 
-        # 等待字典窗口打开
-        time.sleep(1)
+           # Wait for the dictionary window to open
+           time.sleep(1)
 
-        # AppleScript to simulate Cmd + Alt + Ctrl + R to switch back to the previous window
-        switch_window_script = """
-        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-            tell application "System Events"
-                if commandKey then key down command
-                if optionKey then key down option
-                if controlKey then key down control
-                key code keyCode
-                if controlKey then key up control
-                if optionKey then key up option
-                if commandKey then key up command
-            end tell
-        end performKeyPress
+           # AppleScript to simulate Cmd + Alt + Ctrl + R to switch back to the previous window
+           switch_window_script = """
+           on performKeyPress(commandKey, optionKey, controlKey, keyCode)
+               tell application "System Events"
+                   if commandKey then key down command
+                   if optionKey then key down option
+                   if controlKey then key down control
+                   key code keyCode
+                   if controlKey then key up control
+                   if optionKey then key up option
+                   if commandKey then key up command
+               end tell
+           end performKeyPress
 
-        on switchToApp(appName, keyCode)
-            performKeyPress(true, true, true, keyCode)
-        end switchToApp
+           on switchToApp(appName, keyCode)
+               performKeyPress(true, true, true, keyCode)
+           end switchToApp
 
-        switchToApp("frontApp", 15)
-        """
-        subprocess.run(["osascript", "-e", switch_window_script])
+           switchToApp("frontApp", 15)
+           """
+           subprocess.run(["osascript", "-e", switch_window_script])
 
-        # 恢复光标位置
-        restore_mouse_position_script = f"""
-        on restoreMousePosition(mouseX, mouseY)
-            set pythonScript to "import sys
-        from Quartz.CoreGraphics import CGEventCreateMouseEvent, kCGEventMouseMoved, CGEventPost
-        import Quartz.CoreGraphics as CG
+           # Restore mouse position
+           restore_mouse_position_script = f"""
+           on restoreMousePosition(mouseX, mouseY)
+               set pythonScript to "import sys
+           from Quartz.CoreGraphics import CGEventCreateMouseEvent, kCGEventMouseMoved, CGEventPost
+           import Quartz.CoreGraphics as CG
 
-        mousePosition = float(sys.argv[1])
-        mousePositionY = float(sys.argv[2])
+           mousePosition = float(sys.argv[1])
+           mousePositionY = float(sys.argv[2])
 
-        ourEvent = CG.CGEventCreateMouseEvent(None, kCGEventMouseMoved, (mousePosition, mousePositionY), 0)
-        CGEventPost(0, ourEvent)"
-            set shellScript to "~/myenv/bin/python -c " & quoted form of pythonScript & " " & mouseX & " " & mouseY
-            do shell script shellScript
-        end restoreMousePosition
+           ourEvent = CG.CGEventCreateMouseEvent(None, kCGEventMouseMoved, (mousePosition, mousePositionY), 0)
+           CGEventPost(0, ourEvent)"
+               set shellScript to "~/myenv/bin/python -c " & quoted form of pythonScript & " " & mouseX & " " & mouseY
+               do shell script shellScript
+           end restoreMousePosition
 
-        restoreMousePosition({mouse_x}, {mouse_y})
-        """
-        subprocess.run(['osascript', '-e', restore_mouse_position_script])
+           restoreMousePosition({mouse_x}, {mouse_y})
+           """
+           subprocess.run(['osascript', '-e', restore_mouse_position_script])
 
-        # 发送响应
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b'URL has been converted and opened.')
+           # Send response
+           self.send_response(200)
+           self.send_header('Content-type', 'text/html')
+           self.end_headers()
+           self.wfile.write(b'URL has been converted and opened.')
 
-def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
-    server_address = ('', 8080)
-    httpd = server_class(server_address, handler_class)
-    print('Starting http server...')
-    httpd.serve_forever()
+   def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
+       server_address = ('', 8080)
+       httpd = server_class(server_address, handler_class)
+       print('Starting http server...')
+       httpd.serve_forever()
 
-if __name__ == "__main__":
-    run()
+   if __name__ == "__main__":
+       run()
    ```
 
 ### Step 2: Configure Launchd to Run the Script at Startup
@@ -237,7 +237,22 @@ if __name__ == "__main__":
 - **Logs**: Check the logs at `/tmp/urlconverter.log` and `/tmp/urlconverter.err` for any issues.
 - **Service Status**: Ensure the service is running by verifying its status with `launchctl list | grep com.user.urlconverter`.
 - **Script Path**: Verify that the script path in the `plist` file is correct.
-- **Python Path**: Ensure Python is installed and accessible at `/usr/local/bin/python3`.
+
+## Checking Python Accessibility Permissions
+
+Ensure that Python has the necessary accessibility permissions. Here are the steps:
+
+1. **Open System Preferences**:
+   - Click the Apple menu and select "System Preferences."
+
+2. **Access Security & Privacy Settings**:
+   - Click on "Security & Privacy," then select the "Privacy" tab.
+
+3. **Add Python to the Accessibility List**:
+   - In the left sidebar, select "Accessibility."
+   - If the lock icon in the lower-left corner shows as locked, click it and enter your administrator password to unlock.
+   - Click the "+" button and navigate to the Python installation path. Select `/usr/local/bin/python3` (if installed via Homebrew).
+   - Ensure Python is selected and enabled.
 
 ## Contributing
 
@@ -246,3 +261,7 @@ Feel free to submit issues or pull requests for improvements and bug fixes.
 ## License
 
 This project is licensed under the MIT License.
+
+---
+
+This guide should help you set up and run the URL converter service. If you encounter any issues or need further assistance, please feel free to ask.
