@@ -197,8 +197,6 @@ fn restore_mouse_position(position: &(i32, i32)) {
 }
 ```
 
-通过这种方式，我们将 `get_mouse_position.scpt` 和 `get_mouse_position.py` 的功能整合到 `main.rs` 中，从而简化项目结构并提高安全性。接下来，您可以按照 `SETUP_RUST.md` 文件中的步骤配置和测试项目。
-
 ### Updated `SETUP_RUST.md`
 
 ```markdown
@@ -217,39 +215,27 @@ cd /Users/yourusername/url_converter
 cargo build --release
 ```
 
-### 2. Create Launch Agent Configuration File
+### 2. Create the Startup Script
 
-Create a file in the `~/Library/LaunchAgents` directory, for example, `com.user.urlconverter.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.user.urlconverter</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/Users/yourusername/url_converter/target/release/easydict_server</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>/tmp/urlconverter.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/urlconverter.err</string>
-</dict>
-</plist>
-```
-
-### 3. Load and Start the Launch Agent
-
-Load and start the Launch Agent using the following command:
+Create a startup script `start_easydict_server.sh` with the following content:
 
 ```bash
-launchctl load ~/Library/LaunchAgents/com.user.urlconverter.plist
+#!/bin/bash
+/Users/yourusername/url_converter/target/release/easydict_server > /tmp/urlconverter.log 2>&1 &
+```
+
+Make sure the script is executable:
+
+```bash
+chmod +x /Users/yourusername/url_converter/target/release/start_easydict_server.sh
+```
+
+### 3. Add the Script to Startup
+
+Edit your `~/.zshrc` file to include the following line, which will run the server script at startup:
+
+```bash
+/Users/yourusername/url_converter/target/release/start_easydict_server.sh &
 ```
 
 ### 4. Verify the Program is Running
@@ -260,59 +246,47 @@ Check if the program is running using the following command:
 ps aux | grep easydict_server
 ```
 
-### 5. Stop the Launch Agent
+### 5. Stop the Server Manually
 
-Stop and unload the Launch Agent using the following command:
+If needed, you can stop the server manually by finding its process ID and killing it:
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.user.urlconverter.plist
+ps aux | grep easydict_server
+kill <process_id>
 ```
 
-With these steps, you can ensure your Rust project starts automatically upon user login and runs in the background. You can easily start and stop it using `launchctl` commands.
+With these steps, you can ensure your Rust project starts automatically upon user login and runs in the background. You can easily start and stop it as needed.
 
 ## Troubleshooting
 
-- If the program does not start correctly, check the log files `/tmp/urlconverter.log` and `/tmp/urlconverter.err` for error messages.
-- Ensure the `com.user.urlconverter.plist` file path and the script path are correct.
+- If the program does not start correctly, check the log file `/tmp/urlconverter.log` for error messages.
+- Ensure the paths in the script and `~/.zshrc` file are correct.
 - Ensure all relevant files and directories have the correct permissions.
 
 ### Common Issues
 
+### Common Issues (Continued)
+
 #### 1. Log File is Empty or Missing
 
-- Check if the paths in the `.plist` file are correct.
-- Ensure the program has permission to write to the log files.
+- Check if the paths in the script are correct.
+- Ensure the program has permission to write to the log file.
 
 #### 2. Program Not Running in the Background
 
-- Ensure the command in the `.plist` file is correct and the script is executable.
+- Ensure the command in the script is correct and the script is executable.
 - Ensure the `&` symbol is used to run the program in the background.
 
-#### 3. Launch Agent Not Starting Automatically
+#### 3. Script Not Running at Startup
 
-- Ensure the `.plist` file is placed in the `~/Library/LaunchAgents` directory.
-- Ensure the `.plist` file has the correct permissions:
+- Ensure the `.zshrc` file is sourced correctly:
   ```bash
-  chmod 644 ~/Library/LaunchAgents/com.user.urlconverter.plist
+  source ~/.zshrc
   ```
-
-#### 4. Unable to Load or Unload Launch Agent
-
-- Ensure you are using the correct commands to load or unload:
-  ```bash
-  launchctl load ~/Library/LaunchAgents/com.user.urlconverter.plist
-  launchctl unload ~/Library/LaunchAgents/com.user.urlconverter.plist
-  ```
-
-### References
-
-- [launchctl Manual](https://www.manpagez.com/man/1/launchctl/)
-- [Creating Launch Daemons and Agents](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html)
-```
-
-这样，您的 `main.rs` 文件已经整合了原先的 `get_mouse_position.scpt` 和 `get_mouse_position.py` 的功能，项目结构简化且更加安全。以下是更新后的项目目录结构：
 
 ### Project Directory Structure
+
+The simplified project directory structure after these changes is:
 
 ```
 url_converter/
@@ -320,4 +294,9 @@ url_converter/
 ├── SETUP_RUST.md
 ├── src/
 │   └── main.rs
+├── target/
+│   └── release/
+│       └── start_easydict_server.sh
 ```
+
+By following this guide, you should be able to set up and run your URL Converter service efficiently. If you encounter any issues, refer to the troubleshooting section for common problems and solutions.
