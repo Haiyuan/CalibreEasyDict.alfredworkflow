@@ -58,46 +58,33 @@ fn parse_word_from_request(request: &str) -> Option<String> {
 }
 
 fn get_mouse_position() -> (i32, i32) {
-    let home_dir = dirs::home_dir().expect("Failed to get home directory");
-    let script_path = home_dir.join("url_converter/get_mouse_position.scpt");
+    let output = Command::new("python3")
+        .arg("-c")
+        .arg(r#"
+import Quartz.CoreGraphics as CG
+loc = CG.CGEventGetLocation(CG.CGEventCreate(None))
+print(int(loc.x), int(loc.y))
+"#)
+        .output()
+        .expect("Failed to execute Python script");
 
-    let output = Command::new("osascript")
-        .arg(script_path)
-        .output();
-
-    match output {
-        Ok(output) => {
-            let result = String::from_utf8_lossy(&output.stdout);
-            let error = String::from_utf8_lossy(&output.stderr);
-            println!("Mouse position raw output: {}", result); // 打印原始输出以便调试
-            println!("Mouse position error output: {}", error); // 打印错误输出以便调试
-
-            if result.trim().is_empty() {
-                panic!("Failed to get mouse position: empty output");
-            }
-
-            let coords: Vec<&str> = result.trim().split(',').collect();
-
-            if coords.len() != 2 {
-                panic!("Failed to get mouse position: {}", result);
-            }
-
-            let x: i32 = match coords[0].trim().parse() {
-                Ok(val) => val,
-                Err(e) => panic!("Failed to parse X coordinate: {:?}", e),
-            };
-
-            let y: i32 = match coords[1].trim().parse() {
-                Ok(val) => val,
-                Err(e) => panic!("Failed to parse Y coordinate: {:?}", e),
-            };
-
-            (x, y)
-        }
-        Err(e) => {
-            panic!("Failed to execute AppleScript: {:?}", e);
-        }
+    if !output.status.success() {
+        panic!("Failed to get mouse position: {:?}", output.stderr);
     }
+
+    let result = String::from_utf8_lossy(&output.stdout);
+    println!("Mouse position raw output: {}", result); // Print raw output for debugging
+
+    let coords: Vec<&str> = result.trim().split_whitespace().collect();
+
+    if coords.len() != 2 {
+        panic!("Failed to get mouse position: {}", result);
+    }
+
+    let x: i32 = coords[0].trim().parse().expect("Failed to parse X coordinate");
+    let y: i32 = coords[1].trim().parse().expect("Failed to parse Y coordinate");
+
+    (x, y)
 }
 
 fn record_current_window() {
@@ -186,7 +173,7 @@ fn restore_mouse_position(position: &(i32, i32)) {
 
         ourEvent = CG.CGEventCreateMouseEvent(None, kCGEventMouseMoved, (mousePositionX, mousePositionY), 0)
         CGEventPost(0, ourEvent)"
-            set shellScript to "~/myenv/bin/python -c " & quoted form of pythonScript & " " & mouseX & " " & mouseY
+            set shellScript to "/usr/bin/python3 -c " & quoted form of pythonScript & " " & mouseX & " " & mouseY
             do shell script shellScript
         end restoreMousePosition
 
