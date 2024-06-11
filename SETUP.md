@@ -40,7 +40,6 @@ This project sets up a local HTTP server that listens for requests of the form `
            query = urllib.parse.parse_qs(parsed_path.query)
            word = query.get('text', [''])[0]
 
-           # Check if the query text is present
            if not word:
                self.send_response(400)
                self.send_header('Content-type', 'text/html')
@@ -48,11 +47,27 @@ This project sets up a local HTTP server that listens for requests of the form `
                self.wfile.write(b'Missing query text.')
                return
 
-           # Encode the word
            encoded_word = urllib.parse.quote(word)
+           mouse_position = self.get_mouse_position()
+           self.record_current_window()
+           easydict_url = f"easydict://query?text={encoded_word}"
+           webbrowser.open(easydict_url)
+           time.sleep(1)
 
-           # Get current mouse position
-           mouse_position_script = """
+           if len(word.split()) >= 2:
+               self.handle_special_cases()
+               time.sleep(3)
+
+           self.switch_back_to_previous_window()
+           self.restore_mouse_position(mouse_position)
+
+           self.send_response(200)
+           self.send_header('Content-type', 'text/html')
+           self.end_headers()
+           self.wfile.write(b'URL has been converted and opened.')
+
+       def get_mouse_position(self):
+           script = """
            on getMousePosition()
                set mousePositionScript to "~/myenv/bin/python -c 'import Quartz.CoreGraphics as CG; loc = CG.CGEventGetLocation(CG.CGEventCreate(None)); print(int(loc.x), int(loc.y))'"
                set mousePosition to do shell script mousePositionScript
@@ -63,12 +78,11 @@ This project sets up a local HTTP server that listens for requests of the form `
 
            getMousePosition()
            """
-           mouse_position = subprocess.check_output(['osascript', '-e', mouse_position_script])
-           mouse_position = mouse_position.decode('utf-8').strip().split(' ')
-           mouse_x, mouse_y = mouse_position[0], mouse_position[1]
+           result = subprocess.check_output(['osascript', '-e', script])
+           return result.decode('utf-8').strip().split(' ')
 
-           # AppleScript to simulate Cmd + Alt + Ctrl + S to record the current window
-           record_window_script = """
+       def record_current_window(self):
+           script = """
            on performKeyPress(commandKey, optionKey, controlKey, keyCode)
                tell application "System Events"
                    if commandKey then key down command
@@ -81,23 +95,12 @@ This project sets up a local HTTP server that listens for requests of the form `
                end tell
            end performKeyPress
 
-           on switchToApp(appName, keyCode)
-               performKeyPress(true, true, true, keyCode)
-           end switchToApp
-
-           switchToApp("frontApp", 1)
+           performKeyPress(true, true, true, 1)
            """
-           subprocess.run(["osascript", "-e", record_window_script])
+           subprocess.run(["osascript", "-e", script])
 
-           # Open easydict URL
-           easydict_url = f"easydict://query?text={encoded_word}"
-           webbrowser.open(easydict_url)
-
-           # Wait for the dictionary window to open
-           time.sleep(1)
-
-           # AppleScript to simulate Cmd + Alt + Ctrl + R to switch back to the previous window
-           switch_window_script = """
+       def handle_special_cases(self):
+           script = """
            on performKeyPress(commandKey, optionKey, controlKey, keyCode)
                tell application "System Events"
                    if commandKey then key down command
@@ -110,39 +113,48 @@ This project sets up a local HTTP server that listens for requests of the form `
                end tell
            end performKeyPress
 
-           on switchToApp(appName, keyCode)
-               performKeyPress(true, true, true, keyCode)
-           end switchToApp
-
-           switchToApp("frontApp", 15)
+           tell application "EasyDict" to activate
+           performKeyPress(true, true, false, 1)
            """
-           subprocess.run(["osascript", "-e", switch_window_script])
+           subprocess.run(['osascript', '-e', script])
 
-           # Restore mouse position
-           restore_mouse_position_script = f"""
+       def switch_back_to_previous_window(self):
+           script = """
+           on performKeyPress(commandKey, optionKey, controlKey, keyCode)
+               tell application "System Events"
+                   if commandKey then key down command
+                   if optionKey then key down option
+                   if controlKey then key down control
+                   key code keyCode
+                   if controlKey then key up control
+                   if optionKey then key up option
+                   if commandKey then key up command
+               end tell
+           end performKeyPress
+
+           performKeyPress(true, true, true, 15)
+           """
+           subprocess.run(["osascript", "-e", script])
+
+       def restore_mouse_position(self, position):
+           script = f"""
            on restoreMousePosition(mouseX, mouseY)
                set pythonScript to "import sys
            from Quartz.CoreGraphics import CGEventCreateMouseEvent, kCGEventMouseMoved, CGEventPost
            import Quartz.CoreGraphics as CG
 
-           mousePosition = float(sys.argv[1])
+           mousePositionX = float(sys.argv[1])
            mousePositionY = float(sys.argv[2])
 
-           ourEvent = CG.CGEventCreateMouseEvent(None, kCGEventMouseMoved, (mousePosition, mousePositionY), 0)
+           ourEvent = CG.CGEventCreateMouseEvent(None, kCGEventMouseMoved, (mousePositionX, mousePositionY), 0)
            CGEventPost(0, ourEvent)"
                set shellScript to "~/myenv/bin/python -c " & quoted form of pythonScript & " " & mouseX & " " & mouseY
                do shell script shellScript
            end restoreMousePosition
 
-           restoreMousePosition({mouse_x}, {mouse_y})
+           restoreMousePosition({position[0]}, {position[1]})
            """
-           subprocess.run(['osascript', '-e', restore_mouse_position_script])
-
-           # Send response
-           self.send_response(200)
-           self.send_header('Content-type', 'text/html')
-           self.end_headers()
-           self.wfile.write(b'URL has been converted and opened.')
+           subprocess.run(['osascript', '-e', script])
 
    def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
        server_address = ('', 8080)
