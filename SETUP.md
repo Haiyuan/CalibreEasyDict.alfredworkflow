@@ -56,7 +56,7 @@ This project sets up a local HTTP server that listens for requests of the form `
 
            if len(word.split()) >= 2:
                self.handle_special_cases()
-               time.sleep(3)
+               time.sleep(7)
 
            self.switch_back_to_previous_window()
            self.restore_mouse_position(mouse_position)

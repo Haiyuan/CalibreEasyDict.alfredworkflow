@@ -1,0 +1,10 @@
+[package]
+name = "easydict_server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dirs = "4.0"
+url = "2.2"
+webbrowser = "0.5"
+urlencoding = "2.1"
