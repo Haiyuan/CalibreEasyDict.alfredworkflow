@@ -7,7 +7,7 @@ use url::Url;
 use webbrowser;
 
 fn main() {
-    let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:8081").unwrap();
     println!("Starting http server...");
 
     for stream in listener.incoming() {

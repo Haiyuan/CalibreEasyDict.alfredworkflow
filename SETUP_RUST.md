@@ -1,143 +1,3 @@
-# URL Converter Service Setup Guide
-
-This project sets up a local HTTP server that listens for requests of the form `http://localhost:8080/?text={word}` and converts them into `easydict://query?text={word}`, which is then opened by the default web browser. The service is configured to run at startup on MacOS.
-
-### src/main.rs
-
-```rust
-use std::net::TcpListener;
-use std::io::{Read, Write};
-use std::process::Command;
-use std::thread::sleep;
-use std::time::Duration;
-use url::Url;
-use webbrowser;
-
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
-    println!("Starting http server...");
-
-    for stream in listener.incoming() {
-        let mut stream = stream.unwrap();
-
-        let mut buffer = [0; 1024];
-        stream.read(&mut buffer).unwrap();
-
-        let request = String::from_utf8_lossy(&buffer[..]);
-        if let Some(word) = parse_word_from_request(&request) {
-            let encoded_word = urlencoding::encode(&word).to_string();
-            record_current_window();
-            let easydict_url = format!("easydict://query?text={}", encoded_word);
-            webbrowser::open(&easydict_url).unwrap();
-            sleep(Duration::from_secs(1));
-
-            if word.split_whitespace().count() >= 2 {
-                handle_special_cases();
-                sleep(Duration::from_secs(7));
-            }
-
-            switch_back_to_previous_window();
-
-            let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nURL has been converted and opened.";
-            stream.write(response.as_bytes()).unwrap();
-            stream.flush().unwrap();
-        } else {
-            let response = "HTTP/1.1 400 BAD REQUEST\r\nContent-Type: text/html\r\n\r\nMissing query text.";
-            stream.write(response.as_bytes()).unwrap();
-            stream.flush().unwrap();
-        }
-    }
-}
-
-fn parse_word_from_request(request: &str) -> Option<String> {
-    let url = request.lines().next()?.split_whitespace().nth(1)?;
-    let parsed_url = Url::parse(&format!("http://localhost{}", url)).ok()?;
-    let query_pairs = parsed_url.query_pairs();
-    for (key, value) in query_pairs {
-        if key == "text" {
-            return Some(value.into_owned());
-        }
-    }
-    None
-}
-
-fn record_current_window() {
-    let script = r#"
-        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-            tell application "System Events"
-                if commandKey then key down command
-                if optionKey then key down option
-                if controlKey then key down control
-                key code keyCode
-                if controlKey then key up control
-                if optionKey then key up option
-                if commandKey then key up command
-            end tell
-        end performKeyPress
-
-        performKeyPress(true, true, true, 1)
-    "#;
-
-    Command::new("osascript")
-        .arg("-e")
-        .arg(script)
-        .output()
-        .expect("Failed to execute AppleScript");
-}
-
-fn handle_special_cases() {
-    let script = r#"
-        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-            tell application "System Events"
-                if commandKey then key down command
-                if optionKey then key down option
-                if controlKey then key down control
-                key code keyCode
-                if controlKey then key up control
-                if optionKey then key up option
-                if commandKey then key up command
-            end tell
-        end performKeyPress
-
-        tell application "EasyDict" to activate
-        performKeyPress(true, true, false, 1)
-    "#;
-
-    Command::new("osascript")
-        .arg("-e")
-        .arg(script)
-        .output()
-        .expect("Failed to execute AppleScript");
-}
-
-fn switch_back_to_previous_window() {
-    let script = r#"
-        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-            tell application "System Events"
-                if commandKey then key down command
-                if optionKey then key down option
-                if controlKey then key down control
-                key code keyCode
-                if controlKey then key up control
-                if optionKey then key up option
-                if commandKey then key up command
-            end tell
-        end performKeyPress
-
-        performKeyPress(true, true, true, 15)
-    "#;
-
-    Command::new("osascript")
-        .arg("-e")
-        .arg(script)
-        .output()
-        .expect("Failed to execute AppleScript");
-}
-```
-
-### Updated `SETUP_RUST.md`
-
-```markdown
 # SETUP_RUST.md
 
 ## Project Setup and Testing
@@ -153,30 +13,38 @@ cd /Users/yourusername/url_converter
 cargo build --release
 ```
 
-### 2. Create the Startup Script
+### 2. Configure LaunchAgent for Auto-Start
 
-Create a startup script `start_easydict_server.sh` with the following content:
+To ensure the service starts automatically on system startup, create a LaunchAgent plist file:
 
-```bash
-#!/bin/bash
-/Users/yourusername/url_converter/target/release/easydict_server > /tmp/urlconverter.log 2>&1 &
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.rust.easydict_server</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/yourusername/url_converter/target/release/easydict_server</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
 ```
 
-Make sure the script is executable:
+Save this file as `~/Library/LaunchAgents/com.rust.easydict_server.plist`.
+
+Load the LaunchAgent with the following command:
 
 ```bash
-chmod +x /Users/yourusername/url_converter/target/release/start_easydict_server.sh
+launchctl load ~/Library/LaunchAgents/com.rust.easydict_server.plist
 ```
 
-### 3. Add the Script to Startup
-
-Edit your `~/.zshrc` file to include the following line, which will run the server script at startup:
-
-```bash
-/Users/yourusername/url_converter/target/release/start_easydict_server.sh &
-```
-
-### 4. Verify the Program is Running
+### 3. Verify the Program is Running
 
 Check if the program is running using the following command:
 
@@ -184,7 +52,7 @@ Check if the program is running using the following command:
 ps aux | grep easydict_server
 ```
 
-### 5. Stop the Server Manually
+### 4. Stop the Server Manually
 
 If needed, you can stop the server manually by finding its process ID and killing it:
 
@@ -198,12 +66,10 @@ With these steps, you can ensure your Rust project starts automatically upon use
 ## Troubleshooting
 
 - If the program does not start correctly, check the log file `/tmp/urlconverter.log` for error messages.
-- Ensure the paths in the script and `~/.zshrc` file are correct.
+- Ensure the paths in the script are correct.
 - Ensure all relevant files and directories have the correct permissions.
 
 ### Common Issues
-
-### Common Issues (Continued)
 
 #### 1. Log File is Empty or Missing
 
@@ -214,13 +80,6 @@ With these steps, you can ensure your Rust project starts automatically upon use
 
 - Ensure the command in the script is correct and the script is executable.
 - Ensure the `&` symbol is used to run the program in the background.
-
-#### 3. Script Not Running at Startup
-
-- Ensure the `.zshrc` file is sourced correctly:
-  ```bash
-  source ~/.zshrc
-  ```
 
 ### Project Directory Structure
 
@@ -233,8 +92,7 @@ url_converter/
 ├── src/
 │   └── main.rs
 ├── target/
-│   └── release/
-│       └── start_easydict_server.sh
+    └── release/
 ```
 
 By following this guide, you should be able to set up and run your URL Converter service efficiently. If you encounter any issues, refer to the troubleshooting section for common problems and solutions.

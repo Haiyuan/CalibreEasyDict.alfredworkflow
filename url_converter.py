@@ -90,7 +90,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         subprocess.run(["osascript", "-e", script])
 
 def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
-    server_address = ('', 8080)
+    server_address = ('', 8082)
     httpd = server_class(server_address, handler_class)
     print('Starting http server...')
     httpd.serve_forever()

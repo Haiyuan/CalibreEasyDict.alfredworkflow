@@ -1,6 +1,6 @@
 # URL Converter Service Setup Guide
 
-This project sets up a local HTTP server that listens for requests of the form `http://localhost:8080/?text={word}` and converts them into `easydict://query?text={word}`, which is then opened by the default web browser. The service is configured to run at startup on MacOS.
+This project sets up a local HTTP server that listens for requests of the form `http://localhost:8082/?text={word}` and converts them into `easydict://query?text={word}`, which is then opened by the default web browser. The service is configured to run at startup on MacOS.
 
 ## Prerequisites
 
@@ -120,7 +120,7 @@ This project sets up a local HTTP server that listens for requests of the form `
             subprocess.run(["osascript", "-e", script])
 
     def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
-        server_address = ('', 8080)
+        server_address = ('', 8082)
         httpd = server_class(server_address, handler_class)
         print('Starting http server...')
         httpd.serve_forever()
@@ -190,7 +190,7 @@ This project sets up a local HTTP server that listens for requests of the form `
 4. **Add Custom Lookup Source**:
    - In the new window, fill in the following information:
      - **Name**: Enter a descriptive name, such as "Local Dictionary Service".
-     - **Lookup URL**: Enter `http://localhost:8080/?text={word}`.
+     - **Lookup URL**: Enter `http://localhost:8082/?text={word}`.
 
 5. **Save Settings**:
    - Click "OK" to save the custom lookup source, then close the Preferences window.
@@ -204,7 +204,7 @@ This project sets up a local HTTP server that listens for requests of the form `
      ```
 
 2. **Use Calibre Lookup**:
-   - In `Calibre`, when you select a word and use the lookup feature, the configured custom source will send a request to `http://localhost:8080/?text={word}`.
+   - In `Calibre`, when you select a word and use the lookup feature, the configured custom source will send a request to `http://localhost:8082/?text={word}`.
    - The local service will convert this request to `easydict://query?text={word}` and open it in the default web browser.
 
 ## Troubleshooting
