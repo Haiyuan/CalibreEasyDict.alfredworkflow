@@ -9,8 +9,7 @@ import (
 	"time"
 )
 
-func recordCurrentWindow() {
-	script := `
+const performKeyPressScript = `
 on performKeyPress(commandKey, optionKey, controlKey, keyCode)
     tell application "System Events"
         if commandKey then key down command
@@ -22,26 +21,17 @@ on performKeyPress(commandKey, optionKey, controlKey, keyCode)
         if commandKey then key up command
     end tell
 end performKeyPress
+`
 
+func recordCurrentWindow() {
+	script := performKeyPressScript + `
 performKeyPress(true, true, true, 1)
 `
 	exec.Command("osascript", "-e", script).Run()
 }
 
 func handleSpecialCases() {
-	script := `
-on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-    tell application "System Events"
-        if commandKey then key down command
-        if optionKey then key down option
-        if controlKey then key down control
-        key code keyCode
-        if controlKey then key up control
-        if optionKey then key up option
-        if commandKey then key up command
-    end tell
-end performKeyPress
-
+	script := performKeyPressScript + `
 tell application "EasyDict" to activate
 performKeyPress(true, true, false, 1)
 `
@@ -49,19 +39,7 @@ performKeyPress(true, true, false, 1)
 }
 
 func switchBackToPreviousWindow() {
-	script := `
-on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-    tell application "System Events"
-        if commandKey then key down command
-        if optionKey then key down option
-        if controlKey then key down control
-        key code keyCode
-        if controlKey then key up control
-        if optionKey then key up option
-        if commandKey then key up command
-    end tell
-end performKeyPress
-
+	script := performKeyPressScript + `
 performKeyPress(true, true, true, 15)
 `
 	exec.Command("osascript", "-e", script).Run()

@@ -1,4 +1,4 @@
-# SETUP_RUST.md
+# Setup Guide for EasyDict Server Project
 
 ## Project Setup and Testing
 

@@ -6,6 +6,20 @@ use std::time::Duration;
 use url::Url;
 use webbrowser;
 
+const PERFORM_KEY_PRESS_SCRIPT: &str = r#"
+on performKeyPress(commandKey, optionKey, controlKey, keyCode)
+    tell application "System Events"
+        if commandKey then key down command
+        if optionKey then key down option
+        if controlKey then key down control
+        key code keyCode
+        if controlKey then key up control
+        if optionKey then key up option
+        if commandKey then key up command
+    end tell
+end performKeyPress
+"#;
+
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:8081").unwrap();
     println!("Starting http server...");
@@ -55,21 +69,10 @@ fn parse_word_from_request(request: &str) -> Option<String> {
 }
 
 fn record_current_window() {
-    let script = r#"
-        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-            tell application "System Events"
-                if commandKey then key down command
-                if optionKey then key down option
-                if controlKey then key down control
-                key code keyCode
-                if controlKey then key up control
-                if optionKey then key up option
-                if commandKey then key up command
-            end tell
-        end performKeyPress
-
+    let script = format!(r#"
+        {}
         performKeyPress(true, true, true, 1)
-    "#;
+    "#, PERFORM_KEY_PRESS_SCRIPT);
 
     Command::new("osascript")
         .arg("-e")
@@ -79,22 +82,11 @@ fn record_current_window() {
 }
 
 fn handle_special_cases() {
-    let script = r#"
-        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-            tell application "System Events"
-                if commandKey then key down command
-                if optionKey then key down option
-                if controlKey then key down control
-                key code keyCode
-                if controlKey then key up control
-                if optionKey then key up option
-                if commandKey then key up command
-            end tell
-        end performKeyPress
-
+    let script = format!(r#"
+        {}
         tell application "EasyDict" to activate
         performKeyPress(true, true, false, 1)
-    "#;
+    "#, PERFORM_KEY_PRESS_SCRIPT);
 
     Command::new("osascript")
         .arg("-e")
@@ -104,21 +96,10 @@ fn handle_special_cases() {
 }
 
 fn switch_back_to_previous_window() {
-    let script = r#"
-        on performKeyPress(commandKey, optionKey, controlKey, keyCode)
-            tell application "System Events"
-                if commandKey then key down command
-                if optionKey then key down option
-                if controlKey then key down control
-                key code keyCode
-                if controlKey then key up control
-                if optionKey then key up option
-                if commandKey then key up command
-            end tell
-        end performKeyPress
-
+    let script = format!(r#"
+        {}
         performKeyPress(true, true, true, 15)
-    "#;
+    "#, PERFORM_KEY_PRESS_SCRIPT);
 
     Command::new("osascript")
         .arg("-e")

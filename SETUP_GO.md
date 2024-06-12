@@ -41,21 +41,21 @@ To run the program as a startup item on macOS, create a Launch Agent file. Use t
     <string>com.user.easydict_server</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/path/to/easydict_server</string>
+        <string>/Users/yourusername/url_converter/easydict_server</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>StandardErrorPath</key>
-    <string>/path/to/easydict_server.err</string>
+    <string>/Users/yourusername/url_converter/easydict_server.err</string>
     <key>StandardOutPath</key>
-    <string>/path/to/easydict_server.out</string>
+    <string>/Users/yourusername/url_converter/asydict_server.out</string>
 </dict>
 </plist>
 ```
 
-Replace `/path/to/easydict_server` with the actual path to your compiled `easydict_server` executable.
+Replace `/Users/yourusername/url_converter/easydict_server` with the actual path to your compiled `easydict_server` executable.
 
 ### 4. Place the Launch Agent File
 
