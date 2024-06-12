@@ -18,7 +18,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
         encoded_word = urllib.parse.quote(word)
-        mouse_position = self.get_mouse_position()
         self.record_current_window()
         easydict_url = f"easydict://query?text={encoded_word}"
         webbrowser.open(easydict_url)
@@ -29,27 +28,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             time.sleep(7)
 
         self.switch_back_to_previous_window()
-        self.restore_mouse_position(mouse_position)
 
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(b'URL has been converted and opened.')
-
-    def get_mouse_position(self):
-        script = """
-        on getMousePosition()
-            set mousePositionScript to "~/myenv/bin/python -c 'import Quartz.CoreGraphics as CG; loc = CG.CGEventGetLocation(CG.CGEventCreate(None)); print(int(loc.x), int(loc.y))'"
-            set mousePosition to do shell script mousePositionScript
-            set AppleScript's text item delimiters to " "
-            set {mousePositionX, mousePositionY} to text items of mousePosition
-            return {mousePositionX, mousePositionY}
-        end getMousePosition
-
-        getMousePosition()
-        """
-        result = subprocess.check_output(['osascript', '-e', script])
-        return result.decode('utf-8').strip().split(' ')
 
     def record_current_window(self):
         script = """
@@ -105,26 +88,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         performKeyPress(true, true, true, 15)
         """
         subprocess.run(["osascript", "-e", script])
-
-    def restore_mouse_position(self, position):
-        script = f"""
-        on restoreMousePosition(mouseX, mouseY)
-            set pythonScript to "import sys
-        from Quartz.CoreGraphics import CGEventCreateMouseEvent, kCGEventMouseMoved, CGEventPost
-        import Quartz.CoreGraphics as CG
-
-        mousePositionX = float(sys.argv[1])
-        mousePositionY = float(sys.argv[2])
-
-        ourEvent = CG.CGEventCreateMouseEvent(None, kCGEventMouseMoved, (mousePositionX, mousePositionY), 0)
-        CGEventPost(0, ourEvent)"
-            set shellScript to "~/myenv/bin/python -c " & quoted form of pythonScript & " " & mouseX & " " & mouseY
-            do shell script shellScript
-        end restoreMousePosition
-
-        restoreMousePosition({position[0]}, {position[1]})
-        """
-        subprocess.run(['osascript', '-e', script])
 
 def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
     server_address = ('', 8080)
