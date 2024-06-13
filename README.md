@@ -1,6 +1,6 @@
 # EasyDictHelper.alfredworkflow
 
-A workflow for Alfred that allows you to switch between specified special applications using keyboard shortcuts and restore the mouse position. Additionally, it includes custom alerts and hotkey bindings through Hammerspoon.
+A workflow for Alfred that allows you to switch between specified special applications using keyboard shortcuts and restore the mouse position. Additionally, it includes custom alerts and hotkey bindings through Hammerspoon. The project also sets up a local HTTP server for converting text queries to EasyDict URL schemes, facilitating translation services.
 
 ## Table of Contents
 
@@ -20,6 +20,7 @@ A workflow for Alfred that allows you to switch between specified special applic
 - Restore mouse position after switching applications.
 - Trigger specific actions within the special applications.
 - Customizable alert styles and hotkey bindings via Hammerspoon.
+- Local HTTP server to convert text queries to EasyDict URL schemes.
 
 ## Installation
 
@@ -30,7 +31,6 @@ A workflow for Alfred that allows you to switch between specified special applic
 - Hammerspoon for additional hotkey bindings and alerts.
 - Virtual environment for Python at `~/myenv/bin/python`.
 - EasyDict installed via Homebrew:
-
     ```sh
     brew install --cask Easydict
     ```
@@ -38,51 +38,176 @@ A workflow for Alfred that allows you to switch between specified special applic
 ### Steps
 
 1. **Clone the repository:**
-
     ```sh
     git clone https://github.com/Haiyuan/EasyDictHelper.alfredworkflow.git
     cd EasyDictHelper.alfredworkflow
     ```
 
 2. **Set up the Python virtual environment:**
-
     ```sh
     python3 -m venv ~/myenv
     source ~/myenv/bin/activate
     ```
 
 3. **Install the necessary dependencies:**
-
     ```sh
     pip install -r requirements.txt
     ```
-
     The `requirements.txt` file should contain:
-
     ```plaintext
     pyobjc-framework-Quartz==6.2
     ```
 
 4. **Import the workflow into Alfred:**
-
     - Open Alfred Preferences.
     - Go to the "Workflows" tab.
     - Drag and drop the downloaded `EasyDictHelper.alfredworkflow` file into the workflow list.
 
 5. **Set up Hammerspoon:**
-
     - Install [Hammerspoon](https://www.hammerspoon.org/).
     - Copy the provided Hammerspoon configuration to your Hammerspoon config file (`~/.hammerspoon/init.lua`).
+
+6. **Set up the local HTTP server for URL conversion:**
+    - Install Homebrew if not already installed:
+      ```sh
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      ```
+    - Install Python via Homebrew:
+      ```sh
+      brew install python
+      ```
+
+7. **Create and configure the Python script:**
+    - Create a directory for the script:
+      ```sh
+      mkdir -p ~/url_converter
+      ```
+    - Create and edit the `url_converter.py` file in the `~/url_converter` directory with the following content:
+      ```python
+      import http.server
+      import urllib.parse
+      import webbrowser
+      import subprocess
+      import time
+
+      PERFORM_KEY_PRESS_SCRIPT = """
+      on performKeyPress(commandKey, optionKey, controlKey, keyCode)
+          tell application "System Events"
+              if commandKey then key down command
+              if optionKey then key down option
+              if controlKey then key down control
+              key code keyCode
+              if controlKey then key up control
+              if optionKey then key up option
+              if commandKey then key up command
+          end tell
+      end performKeyPress
+      """
+
+      class RequestHandler(http.server.BaseHTTPRequestHandler):
+          def do_GET(self):
+              parsed_path = urllib.parse.urlparse(self.path)
+              query = urllib.parse.parse_qs(parsed_path.query)
+              word = query.get('text', [''])[0]
+
+              if not word:
+                  self.send_response(400)
+                  self.send_header('Content-type', 'text/html')
+                  self.end_headers()
+                  self.wfile.write(b'Missing query text.')
+                  return
+
+              encoded_word = urllib.parse.quote(word)
+              self.record_current_window()
+              easydict_url = f"easydict://query?text={encoded_word}"
+              webbrowser.open(easydict_url)
+              time.sleep(1)
+
+              if len(word.split()) >= 2:
+                  self.handle_special_cases()
+                  time.sleep(7)
+
+              self.switch_back_to_previous_window()
+
+              self.send_response(200)
+              self.send_header('Content-type', 'text/html')
+              self.end_headers()
+              self.wfile.write(b'URL has been converted and opened.')
+
+          def record_current_window(self):
+              script = PERFORM_KEY_PRESS_SCRIPT + """
+      performKeyPress(true, true, true, 1)
+              """
+              subprocess.run(["osascript", "-e", script])
+
+          def handle_special_cases(self):
+              script = PERFORM_KEY_PRESS_SCRIPT + """
+      tell application "EasyDict" to activate
+      performKeyPress(true, true, false, 1)
+              """
+              subprocess.run(['osascript', '-e', script])
+
+          def switch_back_to_previous_window(self):
+              script = PERFORM_KEY_PRESS_SCRIPT + """
+      performKeyPress(true, true, true, 15)
+              """
+              subprocess.run(["osascript", "-e", script])
+
+      def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
+          server_address = ('', 8082)
+          httpd = server_class(server_address, handler_class)
+          print('Starting http server...')
+          httpd.serve_forever()
+
+      if __name__ == "__main__":
+          run()
+      ```
+
+8. **Configure Launchd to run the script at startup:**
+    - Create a directory for launch agents if it doesn't exist and create the configuration file:
+      ```sh
+      mkdir -p ~/Library/LaunchAgents
+      nano ~/Library/LaunchAgents/com.user.urlconverter.plist
+      ```
+    - Add the following content, replacing `yourusername` with your actual username:
+      ```xml
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+          <key>Label</key>
+          <string>com.user.urlconverter</string>
+          <key>ProgramArguments</key>
+          <array>
+              <string>/usr/local/bin/python3</string>
+              <string>/Users/yourusername/url_converter/url_converter.py</string>
+          </array>
+          <key>RunAtLoad</key>
+          <true/>
+          <key>KeepAlive</key>
+          <true/>
+          <key>StandardOutPath</key>
+          <string>/tmp/urlconverter.log</string>
+          <key>StandardErrorPath</key>
+          <string>/tmp/urlconverter.err</string>
+      </dict>
+      </plist>
+      ```
+    - Load and start the service:
+      ```sh
+      launchctl load ~/Library/LaunchAgents/com.user.urlconverter.plist
+      ```
+    - Verify the service:
+      ```sh
+      launchctl list | grep com.user.urlconverter
+      ```
 
 ## Usage
 
 1. **Trigger the workflow:**
-
     - Use the assigned keyword in Alfred to trigger the workflow (e.g., type `switchapp`).
 
 2. **Keyboard Shortcuts:**
-
-    The workflow uses specific keyboard shortcuts to switch between applications and restore mouse position:
     - `Cmd + Alt + Ctrl + S`: Save the current window (Hammerspoon Hotkey).
     - `Cmd + Alt + Ctrl + R`: Switch back to the previous window (Hammerspoon Hotkey).
     - `Cmd + Alt + Ctrl + D`: Select text to translate in EasyDict.
@@ -90,13 +215,21 @@ A workflow for Alfred that allows you to switch between specified special applic
     - `Cmd + P`: Pin the EasyDict window.
 
 3. **Restore Mouse Position:**
-
     - The workflow captures the mouse position before switching applications and restores it afterward using Python scripts.
 
 4. **Hammerspoon Hotkeys:**
-
     - Save the current window: `Cmd + Alt + Ctrl + S`
     - Switch back to the previous window: `Cmd + Alt + Ctrl + R`
+
+5. **Run the Python Script:**
+    - Ensure the Python script is running by executing the following command in the terminal:
+      ```sh
+      python3 ~/url_converter/url_converter.py
+      ```
+
+6. **Use Calibre Lookup:**
+    - In `Calibre`, when you select a word and use the lookup feature, the configured custom source will send a request to `http://localhost:8082/?text={word}`.
+    - The local service will convert this request to `easydict://query?text={word}` and open it in the default web browser.
 
 ## Configuration
 
@@ -116,6 +249,7 @@ You can customize the alert styles and hotkey bindings in your Hammerspoon confi
 ```lua
 -- Custom alert styles
 hs.alert.defaultStyle.strokeWidth = 0
+```lua
 hs.alert.defaultStyle.textSize = 18
 hs.alert.defaultStyle.fillColor = { white = 0, alpha = 0.75 }
 hs.alert.defaultStyle.strokeColor = { white = 0, alpha = 0 }
@@ -320,6 +454,140 @@ delay 3
 executeSecondLogic(specialApps)
 ```
 
+### Python Script for URL Conversion
+
+The Python script for converting text queries to EasyDict URL schemes and handling mouse and window interactions:
+
+```python
+import http.server
+import urllib.parse
+import webbrowser
+import subprocess
+import time
+
+PERFORM_KEY_PRESS_SCRIPT = """
+on performKeyPress(commandKey, optionKey, controlKey, keyCode)
+    tell application "System Events"
+        if commandKey then key down command
+        if optionKey then key down option
+        if controlKey then key down control
+        key code keyCode
+        if controlKey then key up control
+        if optionKey then key up option
+        if commandKey then key up command
+    end tell
+end performKeyPress
+"""
+
+class RequestHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed_path = urllib.parse.urlparse(self.path)
+        query = urllib.parse.parse_qs(parsed_path.query)
+        word = query.get('text', [''])[0]
+
+        if not word:
+            self.send_response(400)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write(b'Missing query text.')
+            return
+
+        encoded_word = urllib.parse.quote(word)
+        self.record_current_window()
+        easydict_url = f"easydict://query?text={encoded_word}"
+        webbrowser.open(easydict_url)
+        time.sleep(1)
+
+        if len(word.split()) >= 2:
+            self.handle_special_cases()
+            time.sleep(7)
+
+        self.switch_back_to_previous_window()
+
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b'URL has been converted and opened.')
+
+    def record_current_window(self):
+        script = PERFORM_KEY_PRESS_SCRIPT + """
+performKeyPress(true, true, true, 1)
+        """
+        subprocess.run(["osascript", "-e", script])
+
+    def handle_special_cases(self):
+        script = PERFORM_KEY_PRESS_SCRIPT + """
+tell application "EasyDict" to activate
+performKeyPress(true, true, false, 1)
+        """
+        subprocess.run(['osascript', '-e', script])
+
+    def switch_back_to_previous_window(self):
+        script = PERFORM_KEY_PRESS_SCRIPT + """
+performKeyPress(true, true, true, 15)
+        """
+        subprocess.run(["osascript", "-e", script])
+
+def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
+    server_address = ('', 8082)
+    httpd = server_class(server_address, handler_class)
+    print('Starting ```python http server...')
+    httpd.serve_forever()
+
+if __name__ == "__main__":
+    run()
+```
+
+### Launchd Configuration for Startup
+
+Create a Launchd configuration file to run the Python script at startup:
+
+1. **Create a Directory for Launch Agents**:
+    ```sh
+    mkdir -p ~/Library/LaunchAgents
+    ```
+
+2. **Create the Configuration File**:
+    ```sh
+    nano ~/Library/LaunchAgents/com.user.urlconverter.plist
+    ```
+
+3. **Add the Following Content**:
+    ```xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>com.user.urlconverter</string>
+        <key>ProgramArguments</key>
+        <array>
+            <string>/usr/local/bin/python3</string>
+            <string>/Users/yourusername/url_converter/url_converter.py</string>
+        </array>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>KeepAlive</key>
+        <true/>
+        <key>StandardOutPath</key>
+        <string>/tmp/urlconverter.log</string>
+        <key>StandardErrorPath</key>
+        <string>/tmp/urlconverter.err</string>
+    </dict>
+    </plist>
+    ```
+    Replace `yourusername` with your actual username.
+
+4. **Load and Start the Service**:
+    ```sh
+    launchctl load ~/Library/LaunchAgents/com.user.urlconverter.plist
+    ```
+
+5. **Verify the Service**:
+    ```sh
+    launchctl list | grep com.user.urlconverter
+    ```
+
 ## Contributing
 
 We welcome contributions to improve this workflow:
@@ -341,3 +609,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Quartz](https://pypi.org/project/pyobjc-framework-Quartz/) - Used for mouse position handling in Python.
 - [EasyDict](https://github.com/tisfeng/Easydict?tab=readme-ov-file#url-scheme) - For translation services.
 - Special thanks to all contributors and resources used.
+
+---
+
+This comprehensive guide should help you set up and run the EasyDictHelper workflow and the URL converter service. If you encounter any issues or need further assistance, please feel free to ask.

@@ -47,10 +47,6 @@ To run the program as a startup item on macOS, create a Launch Agent file. Use t
     <true/>
     <key>KeepAlive</key>
     <true/>
-    <key>StandardErrorPath</key>
-    <string>/Users/yourusername/url_converter/easydict_server.err</string>
-    <key>StandardOutPath</key>
-    <string>/Users/yourusername/url_converter/asydict_server.out</string>
 </dict>
 </plist>
 ```
