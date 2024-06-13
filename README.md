@@ -179,7 +179,7 @@ A workflow for Alfred that allows you to switch between specified special applic
           <string>com.user.urlconverter</string>
           <key>ProgramArguments</key>
           <array>
-              <string>/usr/local/bin/python3</string>
+              <string>/Users/yourusername/myenv/bin/python3</string>
               <string>/Users/yourusername/url_converter/url_converter.py</string>
           </array>
           <key>RunAtLoad</key>
@@ -232,15 +232,6 @@ A workflow for Alfred that allows you to switch between specified special applic
     - The local service will convert this request to `easydict://query?text={word}` and open it in the default web browser.
 
 ## Configuration
-
-### Special Applications
-
-The list of special applications is defined in the workflow script. You can modify the `specialAppsJson` variable to include your desired applications:
-
-```applescript
-set specialAppsJson to "{\"special_apps\": [\"calibre-parallel\", \"sublime_text\", \"sublime_merge\", \"Electron\"]}"
-set specialApps to {"calibre-parallel", "sublime_text", "sublime_merge", "Electron"}
-```
 
 ### Hammerspoon Alerts
 

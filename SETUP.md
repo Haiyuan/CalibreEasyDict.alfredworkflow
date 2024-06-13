@@ -126,7 +126,7 @@ This project sets up a local HTTP server that listens for requests of the form `
        <string>com.user.urlconverter</string>
        <key>ProgramArguments</key>
        <array>
-           <string>/usr/local/bin/python3</string>
+           <string>/Users/yourusername/myenv/bin/python3</string>
            <string>/Users/yourusername/url_converter/url_converter.py</string>
        </array>
        <key>RunAtLoad</key>
