@@ -1,10 +1,10 @@
-# EasyDictHelper.alfredworkflow
+# CalibreEasyDict.alfredworkflow
 
-A workflow for Alfred that allows you to switch between specified special applications using keyboard shortcuts and restore the mouse position. Additionally, it includes custom alerts and hotkey bindings through Hammerspoon. The project also sets up a local HTTP server for converting text queries to EasyDict URL schemes, facilitating translation services.
+A workflow for Alfred that allows you to switch between specified special applications using keyboard shortcuts and restore the mouse position. Additionally, it includes custom alerts and hotkey bindings through Hammerspoon. The project also sets up a local HTTP server for converting text queries to EasyDict URL schemes, facilitating translation services, especially useful for looking up words or sentences while reading books in Calibre.
 
 ## Table of Contents
 
-- [EasyDictHelper.alfredworkflow](#easydicthelperalfredworkflow)
+- [CalibreEasyDict.alfredworkflow](#calibreeasydictalfredworkflow)
   - [Features](#features)
   - [Installation](#installation)
   - [Usage](#usage)
@@ -39,8 +39,8 @@ A workflow for Alfred that allows you to switch between specified special applic
 
 1. **Clone the repository:**
     ```sh
-    git clone https://github.com/Haiyuan/EasyDictHelper.alfredworkflow.git
-    cd EasyDictHelper.alfredworkflow
+    git clone https://github.com/Haiyuan/CalibreEasyDict.alfredworkflow.git
+    cd CalibreEasyDict.alfredworkflow
     ```
 
 2. **Set up the Python virtual environment:**
@@ -61,7 +61,7 @@ A workflow for Alfred that allows you to switch between specified special applic
 4. **Import the workflow into Alfred:**
     - Open Alfred Preferences.
     - Go to the "Workflows" tab.
-    - Drag and drop the downloaded `EasyDictHelper.alfredworkflow` file into the workflow list.
+    - Drag and drop the downloaded `CalibreEasyDict.alfredworkflow` file into the workflow list.
 
 5. **Set up Hammerspoon:**
     - Install [Hammerspoon](https://www.hammerspoon.org/).
@@ -240,7 +240,6 @@ You can customize the alert styles and hotkey bindings in your Hammerspoon confi
 ```lua
 -- Custom alert styles
 hs.alert.defaultStyle.strokeWidth = 0
-```lua
 hs.alert.defaultStyle.textSize = 18
 hs.alert.defaultStyle.fillColor = { white = 0, alpha = 0.75 }
 hs.alert.defaultStyle.strokeColor = { white = 0, alpha = 0 }
@@ -522,7 +521,7 @@ performKeyPress(true, true, true, 15)
 def run(server_class=http.server.HTTPServer, handler_class=RequestHandler):
     server_address = ('', 8082)
     httpd = server_class(server_address, handler_class)
-    print('Starting ```python http server...')
+    print('Starting http server...')
     httpd.serve_forever()
 
 if __name__ == "__main__":
@@ -553,7 +552,7 @@ Create a Launchd configuration file to run the Python script at startup:
         <string>com.user.urlconverter</string>
         <key>ProgramArguments</key>
         <array>
-            <string>/usr/local/bin/python3</string>
+            <string>/Users/yourusername/myenv/bin/python3</string>
             <string>/Users/yourusername/url_converter/url_converter.py</string>
         </array>
         <key>RunAtLoad</key>
@@ -603,4 +602,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-This comprehensive guide should help you set up and run the EasyDictHelper workflow and the URL converter service. If you encounter any issues or need further assistance, please feel free to ask.
+This comprehensive guide should help you set up and run the CalibreEasyDict workflow and the URL converter service. If you encounter any issues or need further assistance, please feel free to ask.
